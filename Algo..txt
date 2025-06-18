@@ -1,0 +1,161 @@
+‎#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <chrono>
+#include <numeric>
+
+using namespace std;
+using namespace std::chrono;
+
+// ******** Sorting Algorithms ********
+
+void bubbleSort(vector<int>& arr) {
+    int n = arr.size();
+    bool swapped;
+    for(int i = 0; i < n-1; i++) {
+        swapped = false;
+        for(int j = 0; j < n-i-1; j++) {
+            if(arr[j] > arr[j+1]) {
+                swap(arr[j], arr[j+1]);
+                swapped = true;
+            }
+        }
+        if (!swapped) break;
+    }
+}
+
+void merge(vector<int>& arr, int l, int m, int r) {
+    int n1 = m - l + 1, n2 = r - m;
+    vector<int> L(n1), R(n2);
+    for(int i = 0; i < n1; i++) L[i] = arr[l+i];
+    for(int j = 0; j < n2; j++) R[j] = arr[m+1+j];
+    
+    int i = 0, j = 0, k = l;
+    while(i < n1 && j < n2)
+        arr[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
+    while(i < n1) arr[k++] = L[i++];
+    while(j < n2) arr[k++] = R[j++];
+}
+
+void mergeSort(vector<int>& arr, int l, int r) {
+    if(l < r) {
+        int m = l + (r - l)/2;
+        mergeSort(arr, l, m);
+        mergeSort(arr, m+1, r);
+        merge(arr, l, m, r);
+    }
+}
+
+int partition(vector<int>& arr, int low, int high) {
+    int pivot = arr[high], i = low - 1;
+    for(int j = low; j <= high - 1; j++) {
+        if(arr[j] < pivot) {
+            i++;
+            swap(arr[i], arr[j]);
+        }
+    }
+    swap(arr[i+1], arr[high]);
+    return i + 1;
+}
+
+void quickSort(vector<int>& arr, int low, int high) {
+    if(low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi-1);
+        quickSort(arr, pi+1, high);
+    }
+}
+
+// ******** Data Generators ********
+
+vector<int> generateRandomArray(int size) {
+    vector<int> arr(size);
+    iota(arr.begin(), arr.end(), 0);
+    shuffle(arr.begin(), arr.end(), default_random_engine(random_device{}()));
+    return arr;
+}
+
+vector<int> generateSortedArray(int size) {
+    vector<int> arr(size);
+    iota(arr.begin(), arr.end(), 0);
+    return arr;
+}
+
+vector<int> generateReversedArray(int size) {
+    vector<int> arr(size);
+    iota(arr.begin(), arr.end(), 0);
+    reverse(arr.begin(), arr.end());
+    return arr;
+}
+
+vector<int> generatePartiallySortedArray(int size) {
+    vector<int> arr = generateSortedArray(size);
+    int swapCount = size / 10;
+    default_random_engine rng(random_device{}());
+    for (int i = 0; i < swapCount; ++i) {
+        int a = rand() % size;
+        int b = rand() % size;
+        swap(arr[a], arr[b]);
+    }
+    return arr;
+}
+
+// ******** Timer & Runner ********
+
+typedef void (*SortFunction)(vector<int>&);
+
+double measureExecutionTime(SortFunction sortFunc, vector<int> arr) {
+    auto start = high_resolution_clock::now();
+    sortFunc(arr);
+    auto end = high_resolution_clock::now();
+    return duration<double, milli>(end - start).count();
+}
+
+double averageExecutionTime(SortFunction sortFunc, vector<int> originalArray, int repeat = 5) {
+    double total = 0;
+    for (int i = 0; i < repeat; ++i) {
+        vector<int> temp = originalArray; // ???? ????????
+        total += measureExecutionTime(sortFunc, temp);
+    }
+    return total / repeat;
+}
+
+void runExperiments(int size) {
+    vector<string> types = {"Random", "Sorted", "Partially Sorted", "Reversed"};
+    vector<vector<int>> datasets = {
+        generateRandomArray(size),
+        generateSortedArray(size),
+        generatePartiallySortedArray(size),
+        generateReversedArray(size)
+    };
+
+    vector<SortFunction> sortFunctions = {
+        bubbleSort,
+        [](vector<int>& arr) { mergeSort(arr, 0, arr.size()-1); },
+        [](vector<int>& arr) { quickSort(arr, 0, arr.size()-1); }
+    };
+
+    vector<string> sortNames = {"Bubble Sort", "Merge Sort", "Quick Sort"};
+
+    cout << "\n=== Input Size: " << size << " ===\n";
+    for (int d = 0; d < types.size(); ++d) {
+        cout << "\n>> Data Type: " << types[d] << "\n";
+        for (int s = 0; s < sortFunctions.size(); ++s) {
+            double avgTime = averageExecutionTime(sortFunctions[s], datasets[d], 5);
+            cout << sortNames[s] << " average time: " << avgTime << " ms\n";
+        }
+    }
+}
+
+// ******** Main ********
+
+int main() {
+    vector<int> sizes = {100, 1000, 3000, 5000, 10000};
+
+    for (int size : sizes) {
+        runExperiments(size);
+    }
+
+    return 0;
+}
